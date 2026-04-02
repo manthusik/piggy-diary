@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>Piggy's Secret Diary</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, 'Segoe UI', 'Poppins', sans-serif;
+      padding: 20px;
+      position: relative;
+      transition: background 0.6s ease;
+    }
+
+    /* Dark mode soft backgrounds */
+    body.mood-lonely {
+      background: linear-gradient(135deg, #2d1f3a 0%, #3a2a4a 100%);
+    }
+    body.mood-exhausted {
+      background: linear-gradient(135deg, #3a2a2a 0%, #4a3535 100%);
+    }
+    body.mood-overwhelmed {
+      background: linear-gradient(135deg, #1e3a2a 0%, #2e4a35 100%);
+    }
+    body.mood-happy {
+      background: linear-gradient(135deg, #4a3a1e 0%, #5a4a2a 100%);
+    }
+    body.mood-calm {
+      background: linear-gradient(135deg, #1e3a4a 0%, #2e4a5a 100%);
+    }
+    /* Default dark mode for lock screen */
+    body:not(.mood-lonely):not(.mood-exhausted):not(.mood-overwhelmed):not(.mood-happy):not(.mood-calm) {
+      background: linear-gradient(135deg, #0a0f1e 0%, #0f172a 100%);
+    }
+
+    /* Floating emojis container */
+    .floating-emojis {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .floating-emoji {
+      position: absolute;
+      font-size: 1.6rem;
+      opacity: 0;
+      animation: floatAcross 7s ease-in-out forwards;
+      pointer-events: none;
+    }
+
+    @keyframes floatAcross {
+      0% {
+        opacity: 0;
+        transform: translate(0, 0) rotate(0deg);
+      }
+      15% {
+        opacity: 0.6;
+      }
+      85% {
+        opacity: 0.6;
+      }
+      100% {
+        opacity: 0;
+        transform: translate(var(--moveX, 100px), var(--moveY, -100px)) rotate(360deg);
+      }
+    }
+
+    .app {
+      max-width: 800px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Lock Screen */
+    .lock-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #0a0f1e, #0b1120);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      transition: all 0.4s ease;
+    }
+
+    .lock-card {
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(12px);
+      padding: 48px 32px;
+      border-radius: 64px;
+      text-align: center;
+      border: 1px solid #3b82f6;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4), 0 0 20px rgba(59,130,246,0.2);
+      max-width: 380px;
+      width: 90%;
+    }
+
+    .lock-icon {
+      font-size: 4.5rem;
+      margin-bottom: 20px;
+    }
+
+    .lock-card h2 {
+      color: #60a5fa;
+      font-size: 1.8rem;
+      margin-bottom: 12px;
+    }
+
+    .lock-sub {
+      color: #94a3b8;
+      margin-bottom: 24px;
+      font-size: 0.9rem;
+    }
+
+    .pin-input {
+      background: #1e293b;
+      border: 2px solid #3b82f6;
+      padding: 14px 20px;
+      border-radius: 60px;
+      width: 100%;
+      font-size: 1.1rem;
+      text-align: center;
+      color: #fff;
+      margin: 16px 0;
+      outline: none;
+      font-family: monospace;
+      letter-spacing: 2px;
+    }
+
+    .pin-input:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 15px rgba(59,130,246,0.3);
+    }
+
+    .unlock-btn {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+      border: none;
+      padding: 12px 32px;
+      border-radius: 60px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+
+    .unlock-btn:active {
+      transform: scale(0.97);
+    }
+
+    .error-msg {
+      color: #f87171;
+      margin-top: 16px;
+      font-size: 0.85rem;
+    }
+
+    .hint {
+      margin-top: 24px;
+      font-size: 0.85rem;
+      color: #60a5fa;
+      font-style: italic;
+    }
+
+    .main-app {
+      display: none;
+      animation: fadeIn 0.5s ease;
+    }
+
+    .main-app.visible {
+      display: block;
+    }
+
+    .privacy-badge {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      border: 1px solid #3b82f6;
+      border-radius: 40px;
+      padding: 10px 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      font-size: 0.75rem;
+      color: #cbd5e1;
+      display: inline-block;
+      width: auto;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .privacy-badge span {
+      color: #60a5fa;
+      font-weight: 600;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 28px;
+      justify-content: center;
+    }
+
+    .tab-btn {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      border: 1px solid #3b82f6;
+      padding: 12px 28px;
+      border-radius: 60px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #60a5fa;
+      box-shadow: 0 4px 12px rgba(59,130,246,0.4);
+    }
+
+    .panel {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    .moods {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin: 28px 0 36px;
+    }
+
+    .mood {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      padding: 12px 22px;
+      border-radius: 80px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 1px solid rgba(59,130,246,0.4);
+    }
+
+    .mood-emoji {
+      font-size: 1.3rem;
+    }
+
+    .mood span:last-child {
+      font-weight: 500;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+    }
+
+    @media (hover: hover) {
+      .mood:hover {
+        transform: translateY(-4px);
+        border-color: #3b82f6;
+        background: rgba(59,130,246,0.25);
+        box-shadow: 0 8px 20px rgba(59,130,246,0.2);
+      }
+    }
+
+    .mood:active {
+      transform: scale(0.96);
+    }
+
+    .message-box {
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      border-radius: 32px;
+      padding: 28px;
+      min-height: 180px;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: #f0f0f0;
+      text-align: center;
+      border: 1px solid rgba(59,130,246,0.4);
+      margin-bottom: 28px;
+    }
+
+    .history-list {
+      background: rgba(0, 0, 0, 0.55);
+      backdrop-filter: blur(4px);
+      border-radius: 32px;
+      padding: 20px;
+      max-height: 450px;
+      overflow-y: auto;
+      border: 1px solid rgba(59,130,246,0.3);
+    }
+
+    .history-item {
+      padding: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .history-date {
+      font-weight: 600;
+      color: #60a5fa;
+      min-width: 95px;
+      font-size: 0.85rem;
+    }
+
+    .history-mood {
+      background: rgba(59,130,246,0.2);
+      padding: 4px 12px;
+      border-radius: 40px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(59,130,246,0.4);
+      font-size: 0.85rem;
+      color: #e2e8f0;
+    }
+
+    .history-message {
+      color: #cbd5e6;
+      flex: 1;
+      font-size: 0.85rem;
+    }
+
+    .empty-history {
+      text-align: center;
+      color: #94a3b8;
+      padding: 40px;
+      font-size: 0.9rem;
+    }
+
+    .footer-note {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.7rem;
+      color: #94a3b8;
+    }
+
+    .clear-btn {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid #475569;
+      color: #94a3b8;
+      padding: 8px 20px;
+      border-radius: 40px;
+      font-size: 0.7rem;
+      cursor: pointer;
+      margin-top: 16px;
+      transition: all 0.2s;
+    }
+
+    .clear-btn:active {
+      transform: scale(0.96);
+    }
+
+    h2 {
+      color: #60a5fa;
+      text-align: center;
+      margin-bottom: 8px;
+      font-size: 1.8rem;
+      font-weight: 600;
+    }
+
+    .sub {
+      text-align: center;
+      color: #94a3b8;
+      margin-bottom: 20px;
+      font-size: 0.85rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes floatUp {
+      0% { opacity: 1; transform: translateY(0) scale(0.8); }
+      100% { opacity: 0; transform: translateY(-80px) scale(1.2); }
+    }
+
+    .heart-float {
+      position: fixed;
+      pointer-events: none;
+      font-size: 1.2rem;
+      animation: floatUp 1s ease-out forwards;
+      z-index: 1000;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-8px); }
+      75% { transform: translateX(8px); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating Emojis Container -->
+<div class="floating-emojis" id="floatingEmojis"></div>
+
+<!-- Lock Screen -->
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-card">
+    <div class="lock-icon">🐷</div>
+    <h2>Piggy's Secret Diary</h2>
+    <div class="lock-sub">enter the code to unlock</div>
+    <input type="password" class="pin-input" id="pinInput" placeholder="········" inputmode="text" autofocus>
+    <button class="unlock-btn" id="unlockBtn">Unlock</button>
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="hint">💭 Guess what it can be?</div>
+  </div>
+</div>
+
+<!-- Main App -->
+<div class="main-app" id="mainApp">
+  <div class="app">
+    <div style="text-align: center;">
+      <div class="privacy-badge">
+        🔒 <span>Only YOU can see what's inside</span> 🔒<br>
+        (not even the creator can read your diary)
+      </div>
+    </div>
+    
+    <h2>Piggy's Secret Diary</h2>
+    <div class="sub">your safe space — just for you</div>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="today">Today's Mood</button>
+      <button class="tab-btn" data-tab="history">My Diary</button>
+    </div>
+
+    <div class="panel active" id="todayPanel">
+      <div class="moods">
+        <div class="mood" data-mood="lonely">
+          <span class="mood-emoji">🌧️</span>
+          <span>Lonely</span>
+        </div>
+        <div class="mood" data-mood="exhausted">
+          <span class="mood-emoji">😴</span>
+          <span>Exhausted</span>
+        </div>
+        <div class="mood" data-mood="overwhelmed">
+          <span class="mood-emoji">🌊</span>
+          <span>Overwhelmed</span>
+        </div>
+        <div class="mood" data-mood="happy">
+          <span class="mood-emoji">😊</span>
+          <span>Happy</span>
+        </div>
+        <div class="mood" data-mood="calm">
+          <span class="mood-emoji">🍃</span>
+          <span>Calm</span>
+        </div>
+      </div>
+
+      <div class="message-box" id="messageBox">
+        tap how you're feeling today<br>
+        <span style="font-size: 0.8rem; color: #60a5fa;">toothless & stitch are here with you</span>
+      </div>
+      <div class="footer-note">
+        your entries are saved only on this device — completely private
+      </div>
+    </div>
+
+    <div class="panel" id="historyPanel">
+      <div class="history-list" id="historyList">
+        <div class="empty-history">📔 No entries yet. Tap a mood to start your diary.</div>
+      </div>
+      <div style="text-align: center;">
+        <button class="clear-btn" id="clearHistoryBtn">clear all entries</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ==================== BIRTHDAY PIN ====================
+  const BIRTH_YEAR = "1993";
+  const BIRTH_MONTH = "10";
+  const BIRTH_DAY = "08";
+
+  function isValidBirthdayPIN(enteredPin) {
+    const cleanPin = enteredPin.trim();
+    const monthNum = parseInt(BIRTH_MONTH);
+    const dayNum = parseInt(BIRTH_DAY);
+    
+    const validFormats = [
+      `${BIRTH_YEAR}${BIRTH_MONTH}${BIRTH_DAY}`,
+      `${BIRTH_YEAR}${monthNum}${dayNum}`,
+      `${BIRTH_YEAR}-${BIRTH_MONTH}-${BIRTH_DAY}`,
+      `${BIRTH_YEAR}-${monthNum}-${dayNum}`,
+      `${BIRTH_YEAR}.${BIRTH_MONTH}.${BIRTH_DAY}`,
+      `${BIRTH_YEAR}.${monthNum}.${dayNum}`,
+      `${BIRTH_YEAR}/${BIRTH_MONTH}/${BIRTH_DAY}`,
+      `${BIRTH_YEAR}/${monthNum}/${dayNum}`,
+      `${BIRTH_DAY}${BIRTH_MONTH}${BIRTH_YEAR}`,
+      `${dayNum}${monthNum}${BIRTH_YEAR}`,
+      `${BIRTH_DAY}-${BIRTH_MONTH}-${BIRTH_YEAR}`,
+      `${dayNum}-${monthNum}-${BIRTH_YEAR}`,
+      `${BIRTH_DAY}.${BIRTH_MONTH}.${BIRTH_YEAR}`,
+      `${dayNum}.${monthNum}.${BIRTH_YEAR}`,
+      `${BIRTH_DAY}/${BIRTH_MONTH}/${BIRTH_YEAR}`,
+      `${dayNum}/${monthNum}/${BIRTH_YEAR}`,
+      `${BIRTH_MONTH}${BIRTH_DAY}${BIRTH_YEAR}`,
+      `${monthNum}${dayNum}${BIRTH_YEAR}`,
+      `${BIRTH_MONTH}-${BIRTH_DAY}-${BIRTH_YEAR}`,
+      `${monthNum}-${dayNum}-${BIRTH_YEAR}`,
+      `${BIRTH_MONTH}.${BIRTH_DAY}.${BIRTH_YEAR}`,
+      `${monthNum}.${dayNum}.${BIRTH_YEAR}`,
+      `${BIRTH_MONTH}/${BIRTH_DAY}/${BIRTH_YEAR}`,
+      `${monthNum}/${dayNum}/${BIRTH_YEAR}`,
+    ];
+    return validFormats.includes(cleanPin);
+  }
+
+  function isUnlocked() {
+    return sessionStorage.getItem('diary_unlocked') === 'true';
+  }
+  
+  function unlockDiary() {
+    sessionStorage.setItem('diary_unlocked', 'true');
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('visible');
+    init();
+  }
+  
+  if (isUnlocked()) {
+    document.getElementById('lockScreen').style.display = 'none';
+    document.getElementById('mainApp').classList.add('visible');
+    init();
+  }
+  
+  function checkAndUnlock() {
+    const pinInput = document.getElementById('pinInput');
+    const errorMsg = document.getElementById('errorMsg');
+    const enteredPin = pinInput.value;
+    
+    if (isValidBirthdayPIN(enteredPin)) {
+      unlockDiary();
+    } else {
+      errorMsg.textContent = 'not quite... try again';
+      pinInput.value = '';
+      pinInput.focus();
+      const lockCard = document.querySelector('.lock-card');
+      lockCard.style.animation = 'shake 0.3s ease';
+      setTimeout(() => { lockCard.style.animation = ''; }, 300);
+    }
+  }
+  
+  document.getElementById('unlockBtn').addEventListener('click', checkAndUnlock);
+  document.getElementById('pinInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') checkAndUnlock();
+  });
+  
+  // ==================== TOUCH SOUNDS ====================
+  let audioContext = null;
+  
+  function playSound(frequency, duration = 0.25, volume = 0.1) {
+    try {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      oscillator.frequency.value = frequency;
+      gainNode.gain.value = volume;
+      oscillator.type = 'sine';
+      oscillator.start();
+      gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + duration);
+      oscillator.stop(audioContext.currentTime + duration);
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+    } catch(e) { }
+  }
+  
+  function playMoodSound(moodType) {
+    const sounds = {
+      lonely: { freq: 440, duration: 0.4, volume: 0.08 },
+      exhausted: { freq: 392, duration: 0.5, volume: 0.07 },
+      overwhelmed: { freq: 349, duration: 0.45, volume: 0.08 },
+      happy: { freq: 523, duration: 0.25, volume: 0.1 },
+      calm: { freq: 294, duration: 0.5, volume: 0.07 }
+    };
+    const sound = sounds[moodType] || sounds.calm;
+    playSound(sound.freq, sound.duration, sound.volume);
+  }
+  
+  // ==================== FLOATING EMOJIS ====================
+  let activeFloatingInterval = null;
+  
+  function stopFloatingEmojis() {
+    if (activeFloatingInterval) {
+      clearInterval(activeFloatingInterval);
+      activeFloatingInterval = null;
+    }
+    const container = document.getElementById('floatingEmojis');
+    container.innerHTML = '';
+  }
+  
+  function startFloatingEmojis(moodType) {
+    stopFloatingEmojis();
+    
+    const emojiSets = {
+      lonely: ['🌧️', '☁️', '💜', '🌙', '🫂', '⭐', '🕯️'],
+      exhausted: ['😴', '💤', '🛌', '✨', '🕯️', '🌙', '☁️'],
+      overwhelmed: ['🌊', '🌱', '🍃', '💙', '🫧', '🌸', '🌈'],
+      happy: ['😊', '🌟', '☀️', '🎉', '🌈', '🌸', '⭐'],
+      calm: ['🍃', '🌿', '🌈', '🕊️', '💙', '🌊', '☁️']
+    };
+    
+    const emojis = emojiSets[moodType] || emojiSets.calm;
+    const container = document.getElementById('floatingEmojis');
+    
+    function addFloatingEmoji() {
+      const emoji = document.createElement('div');
+      emoji.className = 'floating-emoji';
+      emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      
+      const side = Math.floor(Math.random() * 4);
+      let startX, startY;
+      const windowW = window.innerWidth;
+      const windowH = window.innerHeight;
+      
+      switch(side) {
+        case 0:
+          startX = Math.random() * windowW;
+          startY = -30;
+          break;
+        case 1:
+          startX = windowW + 30;
+          startY = Math.random() * windowH;
+          break;
+        case 2:
+          startX = Math.random() * windowW;
+          startY = windowH + 30;
+          break;
+        default:
+          startX = -30;
+          startY = Math.random() * windowH;
+      }
+      
+      const destX = (Math.random() - 0.5) * 200 + (windowW / 2);
+      const destY = (Math.random() - 0.5) * 200 + (windowH / 2);
+      
+      emoji.style.setProperty('--moveX', (destX - startX) + 'px');
+      emoji.style.setProperty('--moveY', (destY - startY) + 'px');
+      emoji.style.left = startX + 'px';
+      emoji.style.top = startY + 'px';
+      emoji.style.fontSize = (1.2 + Math.random() * 1.2) + 'rem';
+      emoji.style.animationDuration = (6 + Math.random() * 4) + 's';
+      emoji.style.animationDelay = (Math.random() * 1) + 's';
+      
+      container.appendChild(emoji);
+      
+      setTimeout(() => {
+        if (emoji && emoji.remove) emoji.remove();
+      }, 10000);
+    }
+    
+    activeFloatingInterval = setInterval(() => {
+      addFloatingEmoji();
+    }, 400);
+    
+    for (let i = 0; i < 12; i++) {
+      setTimeout(() => addFloatingEmoji(), i * 80);
+    }
+  }
+  
+  // ==================== BACKGROUND COLOR CHANGE ====================
+  function changeBackgroundForMood(moodType) {
+    document.body.classList.remove('mood-lonely', 'mood-exhausted', 'mood-overwhelmed', 'mood-happy', 'mood-calm');
+    document.body.classList.add(`mood-${moodType}`);
+  }
+  
+  // ==================== DATA STORAGE ====================
+  let moodEntries = [];
+
+  function loadEntries() {
+    const stored = localStorage.getItem('piggy_mood_diary');
+    moodEntries = stored ? JSON.parse(stored) : [];
+  }
+
+  function saveEntries() {
+    localStorage.setItem('piggy_mood_diary', JSON.stringify(moodEntries));
+  }
+
+  const moodMessages = {
+    lonely: {
+      message: "You're never alone. Ohana means family. Family means nobody gets left behind. I'm always here for you.",
+      emoji: "🌧️"
+    },
+    exhausted: {
+      message: "Rest mode: ACTIVATED. Even Toothless needs to sleep after flying! Close your eyes for 5 minutes. You've done enough today. Proud of you, always.",
+      emoji: "😴"
+    },
+    overwhelmed: {
+      message: "Breathe in... breathe out... One small step at a time. Toothless believes in you. You don't have to figure everything out right now.",
+      emoji: "🌊"
+    },
+    happy: {
+      message: "Yay! Stitch is doing his happy dance! I love seeing you smile — you deserve all the good things.",
+      emoji: "😊"
+    },
+    calm: {
+      message: "Peaceful moments are precious. Like Toothless and Hiccup flying through the night sky. You're doing great. Just breathe and be.",
+      emoji: "🍃"
+    }
+  };
+
+  function createFloatingHeart(x, y) {
+    const heart = document.createElement('div');
+    heart.className = 'heart-float';
+    heart.innerHTML = '💙';
+    heart.style.left = (x - 12) + 'px';
+    heart.style.top = (y - 12) + 'px';
+    document.body.appendChild(heart);
+    setTimeout(() => heart.remove(), 1000);
+  }
+
+  function saveMoodForToday(moodType, event) {
+    const today = new Date();
+    const dateStr = today.toISOString().split('T')[0];
+    const displayDate = today.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const moodInfo = moodMessages[moodType];
+    const existingIndex = moodEntries.findIndex(entry => entry.date === dateStr);
+    const newEntry = { date: dateStr, displayDate, mood: moodType, moodEmoji: moodInfo.emoji, message: moodInfo.message };
+    
+    if (existingIndex !== -1) moodEntries[existingIndex] = newEntry;
+    else moodEntries.unshift(newEntry);
+    
+    saveEntries();
+    showMessage(moodType, event);
+    
+    playMoodSound(moodType);
+    changeBackgroundForMood(moodType);
+    startFloatingEmojis(moodType);
+    
+    if (document.getElementById('historyPanel').classList.contains('active')) renderHistory();
+  }
+
+  function showMessage(moodType, event) {
+    const messageBox = document.getElementById('messageBox');
+    const moodInfo = moodMessages[moodType];
+    messageBox.innerHTML = `<div style="font-size: 1.8rem; margin-bottom: 12px;">${moodInfo.emoji}</div><div>${moodInfo.message}</div><div style="margin-top: 16px; font-size: 0.75rem; color: #60a5fa;">⭐ saved in your secret diary ⭐</div>`;
+    messageBox.style.animation = 'none';
+    messageBox.offsetHeight;
+    messageBox.style.animation = 'fadeIn 0.4s ease';
+    
+    if (event) {
+      let x = event.touches ? event.touches[0].clientX : (event.clientX || window.innerWidth/2);
+      let y = event.touches ? event.touches[0].clientY : (event.clientY || window.innerHeight/2);
+      for (let i = 0; i < 2; i++) setTimeout(() => createFloatingHeart(x + (Math.random() - 0.5) * 40, y + (Math.random() - 0.5) * 30), i * 50);
+    }
+  }
+
+  function renderHistory() {
+    const historyList = document.getElementById('historyList');
+    if (moodEntries.length === 0) {
+      historyList.innerHTML = '<div class="empty-history">📔 No entries yet. Tap a mood to start your diary.</div>';
+      return;
+    }
+    historyList.innerHTML = moodEntries.map(entry => `
+      <div class="history-item">
+        <div class="history-date">${entry.displayDate}</div>
+        <div class="history-mood"><span>${entry.moodEmoji}</span><span>${entry.mood}</span></div>
+        <div class="history-message">${entry.message.substring(0, 100)}${entry.message.length > 100 ? '...' : ''}</div>
+      </div>
+    `).join('');
+  }
+
+  function clearHistory() {
+    if (confirm('Are you sure? This will delete all your diary entries. You can always start fresh.')) {
+      moodEntries = [];
+      saveEntries();
+      renderHistory();
+      document.getElementById('messageBox').innerHTML = 'All cleared. Start fresh whenever you\'re ready. Toothless believes in you.';
+      document.body.classList.remove('mood-lonely', 'mood-exhausted', 'mood-overwhelmed', 'mood-happy', 'mood-calm');
+      stopFloatingEmojis();
+    }
+  }
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(tabId + 'Panel').classList.add('active');
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+    if (tabId === 'history') renderHistory();
+  }
+
+  function init() {
+    loadEntries();
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab'))));
+    document.querySelectorAll('.mood').forEach(mood => {
+      const moodType = mood.getAttribute('data-mood');
+      const handler = (e) => { 
+        e.stopPropagation(); 
+        saveMoodForToday(moodType, e); 
+      };
+      mood.addEventListener('click', handler);
+      mood.addEventListener('touchstart', handler, { passive: false });
+    });
+    document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
+  }
+  
+  if (isUnlocked()) init();
+</script>
+</body>
+</html>
